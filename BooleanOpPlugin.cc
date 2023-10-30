@@ -1,4 +1,5 @@
 #include "BooleanOpPlugin.hh"
+#include "BooleanOperation.hh"
 #include <OpenFlipper/BasePlugin/PluginFunctions.hh>
 
 BooleanOpPlugin::BooleanOpPlugin() { }
@@ -42,11 +43,14 @@ void BooleanOpPlugin::pluginsInitialized() {
     if(obj_1) {
         obj_1->line()->set_closed(true);
         PolyLine::Point p1(-1.0, -1.0, 0.0);
-        PolyLine::Point p2( 0.0,  1.0, 0.0);
-        PolyLine::Point p3( 1.0, -1.0, 0.0);
+        PolyLine::Point p2(-0.5,  1.0, 0.0);
+        PolyLine::Point p3( 0.5,  1.0, 0.0);
+        PolyLine::Point p4( 1.0, -1.0, 0.0);
         obj_1->line()->add_point(p1);
         obj_1->line()->add_point(p2);
         obj_1->line()->add_point(p3);
+        obj_1->line()->add_point(p4);
+        ensure_counter_clockwise_polygon(obj_1->line());
         log("Create Polygon 1!");
     } else {
         log("Fail to create Polygon 1!!");
@@ -60,10 +64,17 @@ void BooleanOpPlugin::pluginsInitialized() {
         obj_2->line()->add_point(p1);
         obj_2->line()->add_point(p2);
         obj_2->line()->add_point(p3);
+        ensure_counter_clockwise_polygon(obj_2->line());
         log("Create Polygon 2!");
     } else {
         log("Fail to create Polygon 2!!");
     }
+
+    ///////////////
+    double area1 = polygon_directed_area(obj_1->line());
+    double area2 = polygon_directed_area(obj_2->line());
+    log("Area of Polygon 1: " + QString("%1").arg(area1));
+    log("Area of Polygon 2: " + QString("%1").arg(area2));
 }
 
 
