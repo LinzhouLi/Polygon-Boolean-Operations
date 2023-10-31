@@ -50,7 +50,7 @@ void BooleanOpPlugin::pluginsInitialized() {
         obj_1->line()->add_point(p2);
         obj_1->line()->add_point(p3);
         obj_1->line()->add_point(p4);
-        BoolOp::ensure_counter_clockwise_polygon(obj_1->line());
+        // BoolOp::ensure_counter_clockwise_polygon(obj_1->line());
         log("Create Polygon 1!");
     } else {
         log("Fail to create Polygon 1!!");
@@ -64,21 +64,32 @@ void BooleanOpPlugin::pluginsInitialized() {
         obj_2->line()->add_point(p1);
         obj_2->line()->add_point(p2);
         obj_2->line()->add_point(p3);
-        BoolOp::ensure_counter_clockwise_polygon(obj_2->line());
+        // BoolOp::ensure_counter_clockwise_polygon(obj_2->line());
         log("Create Polygon 2!");
 
         ///////////////
-        double cross_val = BoolOp::cross(p1, p2, p3);
-        log("Cross of Polygon 2: " + QString("%1").arg(cross_val));
+        // double cross_val = BoolOp::cross(p1, p2, p3);
+        // log("Cross of Polygon 2: " + QString("%1").arg(cross_val));
     } else {
         log("Fail to create Polygon 2!!");
     }
 
     ///////////////
-    double area1 = BoolOp::polygon_directed_area(obj_1->line());
-    double area2 = BoolOp::polygon_directed_area(obj_2->line());
-    log("Area of Polygon 1: " + QString("%1").arg(area1));
-    log("Area of Polygon 2: " + QString("%1").arg(area2));
+    // double area1 = BoolOp::polygon_directed_area(obj_1->line());
+    // double area2 = BoolOp::polygon_directed_area(obj_2->line());
+    // log("Area of Polygon 1: " + QString("%1").arg(area1));
+    // log("Area of Polygon 2: " + QString("%1").arg(area2));
+    PolyLine::Point p1(1.0, 0.0, 0.0), p2(0.0, 1.0, 0.0);
+    PolyLine::Point p3(1.0, 0.0, 0.0), p4(0.5, 0.5, 0.0);
+    BoolOp::Segment seg1{p1, p2}, seg2{p3, p4};
+    bool intersect_result = BoolOp::segments_intersect(seg1, seg2, true, false);
+    bool overlap_result = BoolOp::segments_overlap(seg2, seg1);
+    // bool overlap_result = (
+    //     (seg1[0][0]-ev < seg2[0][0] && seg2[0][0] < seg1[1][0]+ev) || 
+    //     (seg1[0][0]-ev < seg2[1][0] && seg2[1][0] < seg1[1][0]+ev)
+    // );
+    log("segments_intersect: " + QString("%1").arg(intersect_result));
+    log("segments_overlap: " + QString("%1").arg(overlap_result));
 }
 
 

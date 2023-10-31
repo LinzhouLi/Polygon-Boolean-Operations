@@ -4,7 +4,7 @@
 #include <vector>
 
 
-using namespace BoolOp;
+namespace BoolOp {
 
 // b在向量pq左为正, 右为负
 double cross(PolyLine::Point &p, PolyLine::Point &q, PolyLine::Point &b) {
@@ -17,7 +17,7 @@ double cross(PolyLine::Point &p, PolyLine::Point &q, PolyLine::Point &b) {
 
 // 忽略误差, b在向量pq左为正, 右为负
 double to_left(PolyLine::Point &p, PolyLine::Point &q, PolyLine::Point &b) {
-    double a = BoolOp::cross(p, q, b);
+    double a = cross(p, q, b);
     if (std::abs(a) < ev) { a = 0.0; }// 小于误差，认为在向量上
     return a;
 }
@@ -32,28 +32,78 @@ bool points_are_equal(PolyLine::Point &p, PolyLine::Point &q) {
 }
 
 
+bool point_on_segment(PolyLine::Point &point, Segment &seg, bool on_end) {
+    if (points_are_equal(point, seg[0]) || points_are_equal(point, seg[1])) {
+        if (on_end) { return true; }
+        else { return false; }
+    }
+    if (
+        to_left(point, seg[0], seg[1]) == 0.0 &&
+        (std::min(seg[0][0], seg[1][0])-ev < point[0] && point[0] < std::max(seg[0][0], seg[1][0])+ev) &&
+        (std::min(seg[0][1], seg[1][1])-ev < point[1] && point[1] < std::max(seg[0][1], seg[1][1])+ev)
+    ) { return true; }
+    return false;
+}
+
+
+bool point_inside_polygon(PolyLine::Point &point, PolyLine* polygon, bool on_seg) {
+    const std::vector<PolyLine::Point>& vertices = polygon->points();
+
+    double x_min = point[0];
+    for (auto p : vertices) { if (p[0] < x_min) { x_min = p[0]; } }
+    x_min -= 10.0;
+    PolyLine::Point tmp_p(x_min, point[1] + cp, 0.0);
+    Segment radial_seg{tmp_p, point}; // 扫描线
+
+    int n_intersect = 0;
+    size_t n_vertices = polygon->n_vertices();
+    for (size_t i = 0; i < n_vertices; i++) {
+        Segment seg{vertices[i], vertices[(i + 1) % n_vertices]};
+        if (point_on_segment(point, seg)) { 
+            if (on_seg) { return true; }
+            else { return false; }
+        }
+        if (segments_intersect(radial_seg, seg, false, false)) {
+            n_intersect++;
+        }
+    }
+
+    if (n_intersect % 2 == 1) { return true; }
+    else { return false; }
+}
+
+
+bool point_outside_polygon(PolyLine::Point &point, PolyLine* polygon, bool on_seg) {
+    return !point_inside_polygon(point, polygon, !on_seg);
+}
+
+
 bool segments_are_equal(Segment &seg1, Segment &seg2) {
-    return (BoolOp::points_are_equal(seg1[0], seg2[0]) && BoolOp::points_are_equal(seg1[1], seg2[1])) 
-        || (BoolOp::points_are_equal(seg1[1], seg2[0]) && BoolOp::points_are_equal(seg1[0], seg2[1]));
+    return (points_are_equal(seg1[0], seg2[0]) && points_are_equal(seg1[1], seg2[1])) 
+        || (points_are_equal(seg1[1], seg2[0]) && points_are_equal(seg1[0], seg2[1]));
 }
 
 
 bool segments_overlap(Segment &seg1, Segment &seg2) {
     // seg2的顶点都在seg1上, 且其在两坐标轴的投影在seg1投影的内部 (非严格)
     return (
-        BoolOp::to_left(seg1[0], seg1[1], seg2[0]) == 0 && 
-        BoolOp::to_left(seg1[0], seg1[1], seg2[1]) == 0
+        to_left(seg1[0], seg1[1], seg2[0]) == 0 && 
+        to_left(seg1[0], seg1[1], seg2[1]) == 0
     ) && (
         (seg1[0][0]-ev < seg2[0][0] && seg2[0][0] < seg1[1][0]+ev) || 
-        (seg1[0][0]-ev < seg2[1][0] && seg2[1][0] < seg1[1][0]+ev)
+        (seg1[0][0]-ev < seg2[1][0] && seg2[1][0] < seg1[1][0]+ev) ||
+        (seg1[1][0]-ev < seg2[0][0] && seg2[0][0] < seg1[0][0]+ev) || 
+        (seg1[1][0]-ev < seg2[1][0] && seg2[1][0] < seg1[0][0]+ev)
     ) && (
         (seg1[0][1]-ev < seg2[0][1] && seg2[0][1] < seg1[1][1]+ev) || 
-        (seg1[0][1]-ev < seg2[1][1] && seg2[1][1] < seg1[1][1]+ev)
+        (seg1[0][1]-ev < seg2[1][1] && seg2[1][1] < seg1[1][1]+ev) ||
+        (seg1[1][1]-ev < seg2[0][1] && seg2[0][1] < seg1[1][0]+ev) || 
+        (seg1[1][1]-ev < seg2[1][1] && seg2[1][1] < seg1[1][0]+ev)
     );
 }
 
 
-bool segments_intersect(Segment &seg1, Segment &seg2, bool on_seg = true, bool on_end = true) {
+bool segments_intersect(Segment &seg1, Segment &seg2, bool on_seg, bool on_end) {
     if ( // 快速排斥实验
         (std::min(seg2[0][0], seg2[1][0]) - std::max(seg1[0][0], seg1[1][0]) > ev) ||
         (std::min(seg1[0][0], seg1[1][0]) - std::max(seg2[0][0], seg2[1][0]) > ev) ||
@@ -61,28 +111,29 @@ bool segments_intersect(Segment &seg1, Segment &seg2, bool on_seg = true, bool o
         (std::min(seg1[0][1], seg1[1][1]) - std::max(seg2[0][1], seg2[1][1]) > ev)
     ) { return false; }
 
-    double tmp1 = BoolOp::to_left(seg1[0], seg1[1], seg2[0]) * BoolOp::to_left(seg1[0], seg1[1], seg2[1]);
-    double tmp2 = BoolOp::to_left(seg2[0], seg2[1], seg1[0]) * BoolOp::to_left(seg2[0], seg2[1], seg1[1]);
+    double tmp1 = to_left(seg1[0], seg1[1], seg2[0]) * to_left(seg1[0], seg1[1], seg2[1]);
+    double tmp2 = to_left(seg2[0], seg2[1], seg1[0]) * to_left(seg2[0], seg2[1], seg1[1]);
     if ( tmp1 < 0.0 && tmp2 < 0.0 ) { return true; } // 严格跨立实验 (交点不能是端点, 也不能在线段内)
 
     bool intersect_on_end = false, intersect_on_seg = false;
     if ( // 在端点相交
-        BoolOp::points_are_equal(seg1[0], seg2[0]) || BoolOp::points_are_equal(seg1[0], seg2[1]) ||
-        BoolOp::points_are_equal(seg1[1], seg2[0]) || BoolOp::points_are_equal(seg1[1], seg2[1])
+        points_are_equal(seg1[0], seg2[0]) || points_are_equal(seg1[0], seg2[1]) ||
+        points_are_equal(seg1[1], seg2[0]) || points_are_equal(seg1[1], seg2[1])
     ) { intersect_on_end = true; }
     else if ( // 不在端点相交, 但在线段上相交
         tmp1 <= 0.0 && tmp2 <= 0.0
     ) { intersect_on_seg = true; }
     else { return false; }
 
-    if (intersect_on_end == on_end && intersect_on_seg == on_seg) { return true; }
+    if (intersect_on_end && on_end && !(intersect_on_seg && !on_seg)) { return true; }
+    if (intersect_on_seg && on_seg && !(intersect_on_end && !on_end)) { return true; }
     return false;
 }
 
 
 bool get_intersect_point_of_segments(Segment &seg1, Segment &seg2, PolyLine::Point& result) {
-    double d1 = std::abs(BoolOp::cross(seg1[0], seg1[1], seg2[0]));
-    double d2 = std::abs(BoolOp::cross(seg1[0], seg1[1], seg2[1]));
+    double d1 = std::abs(cross(seg1[0], seg1[1], seg2[0]));
+    double d2 = std::abs(cross(seg1[0], seg1[1], seg2[1]));
     double x = seg2[0][0] + (seg2[1][0] - seg2[0][0]) * d1 / (d1 + d2);
     double y = seg2[0][1] + (seg2[1][1] - seg2[0][1]) * d1 / (d1 + d2);
     result[0] = x, result[1] = y, result[2] = 0.0;
@@ -112,6 +163,64 @@ bool get_intersect_point_of_lines(Segment &line1, Segment &line2, PolyLine::Poin
 }
 
 
+std::vector<Segment>& interclip_segment(std::vector<Segment> &seg1s, std::vector<Segment> &seg2s) {
+    std::vector<Segment> seg_clip;
+    for (auto seg1 : seg1s) {
+        std::vector<PolyLine::Point> intersecters{seg1[0]};
+        for (auto seg2: seg2s) {
+            if (segments_overlap(seg1, seg2)) { // 线段重合
+                if (point_on_segment(seg2[0], seg1, false)) {
+                    intersecters.push_back(seg2[0]);
+                }
+                if (point_on_segment(seg2[1], seg1, false)) {
+                    intersecters.push_back(seg2[1]);
+                }
+            }
+            else if (segments_intersect(seg1, seg2, true, false)) { // 线段相交
+                PolyLine::Point isp;
+                get_intersect_point_of_segments(seg1, seg2, isp);
+                if (
+                    (!points_are_equal(isp, seg1[0])) &&
+                    (!points_are_equal(isp, seg1[1]))
+                ) { intersecters.push_back(isp); }
+            }
+        }
+        intersecters.push_back(seg1[1]);
+        if (seg1[0][0] < seg1[1][0]) {
+            std::sort(
+                intersecters.begin(), intersecters.end(),
+                [](PolyLine::Point x, PolyLine::Point y) { return x[0] < y[0]; }
+            );
+        }
+        else if (seg1[0][0] > seg1[1][0]) {
+            std::sort(
+                intersecters.begin(), intersecters.end(),
+                [](PolyLine::Point x, PolyLine::Point y) { return x[0] > y[0]; }
+            );
+        }
+        else {
+            if (seg1[0][1] < seg1[1][1]) {
+                std::sort(
+                    intersecters.begin(), intersecters.end(),
+                    [](PolyLine::Point x, PolyLine::Point y) { return x[1] < y[1]; }
+                );
+            }
+            else if (seg1[0][1] > seg1[1][1]) {
+                std::sort(
+                    intersecters.begin(), intersecters.end(),
+                    [](PolyLine::Point x, PolyLine::Point y) { return x[1] > y[1]; }
+                );
+            }
+        }
+        for (size_t i = 0; i < intersecters.size() - 1; i++) {
+            Segment seg{intersecters[i], intersecters[i+1]};
+            seg_clip.push_back(seg);
+        }
+    }
+    return seg_clip;
+}
+
+
 double polygon_directed_area(PolyLine* polygon) {
     const std::vector<PolyLine::Point>& vertices = polygon->points();
     size_t n_vertices = polygon->n_vertices();
@@ -126,8 +235,63 @@ double polygon_directed_area(PolyLine* polygon) {
 
 
 void ensure_counter_clockwise_polygon(PolyLine* polygon) {
-    if (BoolOp::polygon_directed_area(polygon) < 0.0) { // vertices order is clockwise
+    if (polygon_directed_area(polygon) < 0.0) { // vertices order is clockwise
         std::vector<PolyLine::Point>& vertices = polygon->points();
         std::reverse(vertices.begin(), vertices.end()); // clockwise to counter-clockwise
     }
+}
+
+
+void polygon_union(PolyLine* polygon1, PolyLine* polygon2, PolyLine* result) {
+    ensure_counter_clockwise_polygon(polygon1);
+    ensure_counter_clockwise_polygon(polygon2);
+
+    std::vector<PolyLine::Point>& poly1_vs = polygon1->points();
+    std::vector<PolyLine::Point>& poly2_vs = polygon2->points();
+
+    std::vector<Segment> seg1s, seg2s;
+    for (size_t i = 0; i < polygon1->n_vertices() - 1; i++) {
+        Segment seg{poly1_vs[i], poly1_vs[i + 1]};
+        seg1s.push_back(seg);
+    }
+    for (size_t i = 0; i < polygon2->n_vertices() - 1; i++) {
+        Segment seg{poly2_vs[i], poly2_vs[i + 1]};
+        seg2s.push_back(seg);
+    }
+
+    std::vector<Segment> seg1clips = interclip_segment(seg1s, seg2s);
+    std::vector<Segment> seg2clips = interclip_segment(seg2s, seg1s);
+
+    std::vector<Segment> union_set;
+    for (auto seg : seg1clips) {
+        PolyLine::Point tmp_p(
+            seg[0][0] + cp * (seg[1][0] - seg[0][0]),
+            seg[0][1] + cp * (seg[1][1] - seg[0][1]),
+            0.0
+        );
+        if (!point_inside_polygon(tmp_p, polygon2)) { union_set.push_back(seg); }
+    }
+    for (auto seg : seg2clips) {
+        PolyLine::Point tmp_p(
+            seg[0][0] + cp * (seg[1][0] - seg[0][0]),
+            seg[0][1] + cp * (seg[1][1] - seg[0][1]),
+            0.0
+        );
+        if (!point_inside_polygon(tmp_p, polygon1)) { union_set.push_back(seg); }
+    }
+
+    PolyLine::Point first_point = union_set[0][0];
+    PolyLine::Point last_point = union_set[0][1];
+    result->add_point(first_point);
+    while (!points_are_equal(first_point, last_point)) {
+        result->add_point(last_point);
+        for (auto seg : union_set) {
+            if (points_are_equal(seg[0], last_point)) {
+                last_point = seg[1];
+                break;
+            }
+        }
+    }
+}
+
 }
