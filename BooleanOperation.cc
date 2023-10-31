@@ -1,6 +1,7 @@
 #include "BooleanOperation.hh"
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 
 using namespace BoolOp;
@@ -22,12 +23,60 @@ double to_left(PolyLine::Point &p, PolyLine::Point &q, PolyLine::Point &b) {
 }
 
 
-bool point_is_equal(PolyLine::Point &p, PolyLine::Point &q) {
+bool points_are_equal(PolyLine::Point &p, PolyLine::Point &q) {
     double x = p[0] - q[0];
     double y = p[1] - q[1];
     double l2 = x * x + y * y;
     if (l2 < ev_sq) { return true; }
     else { return false; }
+}
+
+
+bool segments_are_equal(Segment &seg1, Segment &seg2) {
+    return (BoolOp::points_are_equal(seg1[0], seg2[0]) && BoolOp::points_are_equal(seg1[1], seg2[1])) 
+        || (BoolOp::points_are_equal(seg1[1], seg2[0]) && BoolOp::points_are_equal(seg1[0], seg2[1]));
+}
+
+
+bool segments_overlap(Segment &seg1, Segment &seg2) {
+    // seg2的顶点都在seg1上, 且其在两坐标轴的投影在seg1投影的内部 (非严格)
+    return (
+        BoolOp::to_left(seg1[0], seg1[1], seg2[0]) == 0 && 
+        BoolOp::to_left(seg1[0], seg1[1], seg2[1]) == 0
+    ) && (
+        (seg1[0][0]-ev < seg2[0][0] && seg2[0][0] < seg1[1][0]+ev) || 
+        (seg1[0][0]-ev < seg2[1][0] && seg2[1][0] < seg1[1][0]+ev)
+    ) && (
+        (seg1[0][1]-ev < seg2[0][1] && seg2[0][1] < seg1[1][1]+ev) || 
+        (seg1[0][1]-ev < seg2[1][1] && seg2[1][1] < seg1[1][1]+ev)
+    );
+}
+
+
+bool segments_intersect(Segment &seg1, Segment &seg2, bool on_seg = true, bool on_end = true) {
+    if ( // 快速排斥实验
+        (std::min(seg2[0][0], seg2[1][0]) - std::max(seg1[0][0], seg1[1][0]) > ev) ||
+        (std::min(seg1[0][0], seg1[1][0]) - std::max(seg2[0][0], seg2[1][0]) > ev) ||
+        (std::min(seg2[0][1], seg2[1][1]) - std::max(seg1[0][1], seg1[1][1]) > ev) ||
+        (std::min(seg1[0][1], seg1[1][1]) - std::max(seg2[0][1], seg2[1][1]) > ev)
+    ) { return false; }
+
+    double tmp1 = BoolOp::to_left(seg1[0], seg1[1], seg2[0]) * BoolOp::to_left(seg1[0], seg1[1], seg2[1]);
+    double tmp2 = BoolOp::to_left(seg2[0], seg2[1], seg1[0]) * BoolOp::to_left(seg2[0], seg2[1], seg1[1]);
+    if ( tmp1 < 0.0 && tmp2 < 0.0 ) { return true; } // 严格跨立实验 (交点不能是端点, 也不能在线段内)
+
+    bool intersect_on_end = false, intersect_on_seg = false;
+    if ( // 在端点相交
+        BoolOp::points_are_equal(seg1[0], seg2[0]) || BoolOp::points_are_equal(seg1[0], seg2[1]) ||
+        BoolOp::points_are_equal(seg1[1], seg2[0]) || BoolOp::points_are_equal(seg1[1], seg2[1])
+    ) { intersect_on_end = true; }
+    else if ( // 不在端点相交, 但在线段上相交
+        tmp1 <= 0.0 && tmp2 <= 0.0
+    ) { intersect_on_seg = true; }
+    else { return false; }
+
+    if (intersect_on_end == on_end && intersect_on_seg == on_seg) { return true; }
+    return false;
 }
 
 
