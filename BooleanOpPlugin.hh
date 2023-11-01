@@ -33,6 +33,7 @@ signals:
     void addToolbox( QString _name, QWidget* _widget );
     // LoadSaveInterface
     void addEmptyObject( DataType _type, int& _id);
+    void deleteObject( int& _id );
 
 public:
     BooleanOpPlugin();
@@ -43,6 +44,9 @@ public:
 private:
     int obj_id_1, obj_id_2, result_obj_id;
 
+    void clearSourceObjects();
+    void clearResultObject();
+
 private slots:
     // BaseInterface
     void initializePlugin();
@@ -51,6 +55,10 @@ private slots:
     void calcIntersection();
     void calcUnion();
     void calcDifference();
+
+    void loadPolygon1();
+    void loadPolygon2();
+    void clearObjects();
 
 public slots:
     QString version() { return QString("1.0"); };
