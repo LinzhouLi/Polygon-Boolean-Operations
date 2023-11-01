@@ -2,6 +2,11 @@
 #include "BooleanOperation.hh"
 #include <OpenFlipper/BasePlugin/PluginFunctions.hh>
 
+#include <iostream>
+#include <cassert>
+#include <fstream>
+
+
 BooleanOpPlugin::BooleanOpPlugin() { }
 
 
@@ -159,6 +164,26 @@ void BooleanOpPlugin::calcDifference() {
 }
 
 
+bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLine* polygon) {
+    using namespace std;
+    auto f = fstream(filePath, ios::in);
+    if (!f.is_open()) { return false; }
+
+    string line;
+    istringstream linestream;
+    while (getline(f, line)) {
+        linestream = istringstream(line);
+        double x, y;
+        linestream >> x >> y;
+        PolyLine::Point p(x, y, 0.0);
+        polygon->add_point(p);
+    }
+
+    f.close();
+    return true;
+}
+
+
 void BooleanOpPlugin::loadPolygon1() {
     PolyLineObject* obj_1(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
@@ -167,14 +192,16 @@ void BooleanOpPlugin::loadPolygon1() {
         return;
     }
 
-    PolyLine::Point p1(-1.0, -1.0, 0.0);
-    PolyLine::Point p2(-0.5,  1.0, 0.0);
-    PolyLine::Point p3( 0.5,  1.0, 0.0);
-    PolyLine::Point p4( 1.0, -1.0, 0.0);
-    obj_1->line()->add_point(p1);
-    obj_1->line()->add_point(p2);
-    obj_1->line()->add_point(p3);
-    obj_1->line()->add_point(p4);
+    auto filePath = QFileDialog::getOpenFileName(
+        nullptr, tr("Choose one file"),
+        QString(), u8"Plain Text (*.txt *.ppp)"
+    );
+
+    if (filePath.isEmpty() || filePath.isNull()) { return; }
+    if (!parseFile(filePath.toStdString(), obj_1->line())) {
+        log("Fail to parse file: " + QString(filePath));
+        return;
+    }
 
     obj_1->line()->set_closed(true);
     emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
@@ -190,12 +217,16 @@ void BooleanOpPlugin::loadPolygon2() {
         return;
     }
 
-    PolyLine::Point p1( 1.0,  1.0, 0.0);
-    PolyLine::Point p2( 0.0, -1.0, 0.0);
-    PolyLine::Point p3(-1.0,  1.0, 0.0);
-    obj_2->line()->add_point(p1);
-    obj_2->line()->add_point(p2);
-    obj_2->line()->add_point(p3);
+    auto filePath = QFileDialog::getOpenFileName(
+        nullptr, tr("Choose one file"),
+        QString(), u8"Plain Text (*.txt *.ppp)"
+    );
+    
+    if (filePath.isEmpty() || filePath.isNull()) { return; }
+    if (!parseFile(filePath.toStdString(), obj_2->line())) {
+        log("Fail to parse file: " + QString(filePath));
+        return;
+    }
 
     obj_2->line()->set_closed(true);
     emit updatedObject(obj_id_2, UPDATE_GEOMETRY);

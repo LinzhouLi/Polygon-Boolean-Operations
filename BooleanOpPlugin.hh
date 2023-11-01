@@ -13,6 +13,8 @@
 #include <QGridLayout>
 #include <QSpinBox>
 
+#include <string>
+
 class BooleanOpPlugin : public QObject, BaseInterface, ToolboxInterface, LoggingInterface, LoadSaveInterface
 {
     Q_OBJECT
@@ -46,6 +48,7 @@ private:
 
     void clearSourceObjects();
     void clearResultObject();
+    bool parseFile(const std::string &filePath, PolyLine* polygon);
 
 private slots:
     // BaseInterface
