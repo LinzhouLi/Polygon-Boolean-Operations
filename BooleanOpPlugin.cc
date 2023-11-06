@@ -42,6 +42,8 @@ void BooleanOpPlugin::initializePlugin() {
 void BooleanOpPlugin::pluginsInitialized() {
     // Variable which will store the id of the newly created object.
     obj_id_1 = -1, obj_id_2 = -1, result_obj_id = -1;
+    poly_seg_1.clear();
+    poly_seg_2.clear();
     PolyLineObject* obj_1(0), *obj_2(0), *result_obj(0);
 
     // Emit the signal, that we want to create a new object of the specified type plane
@@ -71,6 +73,8 @@ void BooleanOpPlugin::clearSourceObjects() {
     PluginFunctions::getObject(obj_id_2, obj_2);
     obj_1->line()->clear();
     obj_2->line()->clear();
+    poly_seg_1.clear();
+    poly_seg_2.clear();
     emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
     emit updatedObject(obj_id_2, UPDATE_GEOMETRY);
     log("Clear source objects.");
@@ -102,7 +106,7 @@ void BooleanOpPlugin::calcIntersection() {
         return;
     }
 
-    if ( BoolOp::polygon_intersection(obj_1->line(), obj_2->line(), result_obj->line()) ) {
+    if ( BoolOp::polygon_intersection(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
         log("Success to calculate intersection!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -128,7 +132,7 @@ void BooleanOpPlugin::calcUnion() {
         return;
     }
 
-    if ( BoolOp::polygon_union(obj_1->line(), obj_2->line(), result_obj->line()) ) {
+    if ( BoolOp::polygon_union(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
         log("Success to calculate union!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -154,7 +158,7 @@ void BooleanOpPlugin::calcDifference() {
         return;
     }
 
-    if ( BoolOp::polygon_difference(obj_1->line(), obj_2->line(), result_obj->line()) ) {
+    if ( BoolOp::polygon_difference(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
         log("Success to calculate difference!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -164,22 +168,31 @@ void BooleanOpPlugin::calcDifference() {
 }
 
 
-bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLine* polygon) {
+bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLine* polygon, std::vector<int> &poly_seg) {
     using namespace std;
     auto f = fstream(filePath, ios::in);
     if (!f.is_open()) { return false; }
 
-    string line;
+    std::vector<PolyLine::Point> points;
+
+    std::string line, seg_sign("#loop");
     istringstream linestream;
+    getline(f, line); // get first '#loop'
     while (getline(f, line)) {
+        if (line == seg_sign) {
+            continue;
+        }
         linestream = istringstream(line);
         double x, y;
         linestream >> x >> y;
         PolyLine::Point p(x, y, 0.0);
-        polygon->add_point(p);
+        points.push_back(p);
     }
-
     f.close();
+
+    poly_seg.push_back(points.size());
+
+    for (auto p : points) { polygon->add_point(p); }
     return true;
 }
 
@@ -198,12 +211,11 @@ void BooleanOpPlugin::loadPolygon1() {
     );
 
     if (filePath.isEmpty() || filePath.isNull()) { return; }
-    if (!parseFile(filePath.toStdString(), obj_1->line())) {
+    if (!parseFile(filePath.toStdString(), obj_1->line(), poly_seg_1)) {
         log("Fail to parse file: " + QString(filePath));
         return;
     }
 
-    obj_1->line()->set_closed(true);
     emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
     log("Load polygon 1!");
 }
@@ -223,12 +235,11 @@ void BooleanOpPlugin::loadPolygon2() {
     );
     
     if (filePath.isEmpty() || filePath.isNull()) { return; }
-    if (!parseFile(filePath.toStdString(), obj_2->line())) {
+    if (!parseFile(filePath.toStdString(), obj_2->line(), poly_seg_2)) {
         log("Fail to parse file: " + QString(filePath));
         return;
     }
 
-    obj_2->line()->set_closed(true);
     emit updatedObject(obj_id_2, UPDATE_GEOMETRY);
     log("Load polygon 2!");
 }

@@ -31,15 +31,15 @@ void interclip_segment(std::vector<Segment> &seg1s, std::vector<Segment> &seg2s,
 bool get_intersect_point_of_segments(Segment &seg1, Segment &seg2, PolyLine::Point& result);
 bool get_intersect_point_of_lines(Segment &line1, Segment &line2, PolyLine::Point& result);
 
-void get_polygon_segments(PolyLine* polygon, std::vector<Segment> &segs);
+void get_polygon_segments(PolyLine* polygon, std::vector<int> &poly_seg, std::vector<Segment> &segs, bool reverse = false);
 double polygon_directed_area(PolyLine* polygon);
 void ensure_clockwise_polygon(PolyLine* polygon);
 void ensure_counter_clockwise_polygon(PolyLine* polygon);
 bool connect_segment_set(std::vector<Segment> &segs, PolyLine* polygon);
 
-bool polygon_intersection(PolyLine* polygon1, PolyLine* polygon2, PolyLine* result);
-bool polygon_union(PolyLine* polygon1, PolyLine* polygon2, PolyLine* result);
-bool polygon_difference(PolyLine* polygon1, PolyLine* polygon2, PolyLine* result);
+bool polygon_intersection(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result);
+bool polygon_union(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result);
+bool polygon_difference(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result);
 
 
 }

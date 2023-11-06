@@ -45,10 +45,11 @@ public:
 
 private:
     int obj_id_1, obj_id_2, result_obj_id;
+    std::vector<int> poly_seg_1, poly_seg_2;
 
     void clearSourceObjects();
     void clearResultObject();
-    bool parseFile(const std::string &filePath, PolyLine* polygon);
+    bool parseFile(const std::string &filePath, PolyLine* polygon, std::vector<int> &poly_seg);
 
 private slots:
     // BaseInterface
