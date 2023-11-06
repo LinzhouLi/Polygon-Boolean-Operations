@@ -71,8 +71,8 @@ void BooleanOpPlugin::clearSourceObjects() {
     PluginFunctions::getObject(obj_id_2, obj_2);
     obj_1->collection()->clear();
     obj_2->collection()->clear();
-    emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
-    emit updatedObject(obj_id_2, UPDATE_GEOMETRY);
+    emit updatedObject(obj_id_1, UPDATE_ALL);
+    emit updatedObject(obj_id_2, UPDATE_ALL);
     log("Clear source objects.");
 }
 
@@ -81,7 +81,7 @@ void BooleanOpPlugin::clearResultObject() {
     PolyLineCollectionObject* result_obj(0);
     PluginFunctions::getObject(result_obj_id, result_obj);
     result_obj->collection()->clear();
-    emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
+    emit updatedObject(result_obj_id, UPDATE_ALL);
     log("Clear result object.");
 }
 
@@ -100,7 +100,7 @@ void BooleanOpPlugin::calcIntersection() {
 
     if ( BoolOp::polygon_intersection(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate intersection!");
-        emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
+        emit updatedObject(result_obj_id, UPDATE_ALL);
         clearSourceObjects();
     } else {
         log("Fail to calculate intersection!");
@@ -122,7 +122,7 @@ void BooleanOpPlugin::calcUnion() {
 
     if ( BoolOp::polygon_union(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate union!");
-        emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
+        emit updatedObject(result_obj_id, UPDATE_ALL);
         clearSourceObjects();
     } else {
         log("Fail to calculate union!");
@@ -144,7 +144,7 @@ void BooleanOpPlugin::calcDifference() {
 
     if ( BoolOp::polygon_difference(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate difference!");
-        emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
+        emit updatedObject(result_obj_id, UPDATE_ALL);
         clearSourceObjects();
     } else {
         log("Fail to calculate difference!");
@@ -153,21 +153,21 @@ void BooleanOpPlugin::calcDifference() {
 
 
 bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLineCollection* polygons) {
-    using namespace std;
-    auto f = fstream(filePath, ios::in);
+    auto f = std::fstream(filePath, std::ios::in);
     if (!f.is_open()) { return false; }
 
     PolyLine* polygon;
 
     std::string line, seg_sign("#loop");
-    istringstream linestream;
-    while (getline(f, line)) {
+    std::istringstream linestream;
+    while (std::getline(f, line)) {
         if (line == seg_sign) {
             int id = polygons->new_poly_line();
             polygon = polygons->polyline(id);
+            polygon->clear();
             continue;
         }
-        linestream = istringstream(line);
+        linestream = std::istringstream(line);
         double x, y;
         linestream >> x >> y;
         PolyLine::Point p(x, y, 0.0);
@@ -196,9 +196,11 @@ void BooleanOpPlugin::loadPolygon1() {
     if (!parseFile(filePath.toStdString(), obj_1->collection())) {
         log("Fail to parse file: " + QString(filePath));
         return;
+    } else {
+        log("Success to parse file: " + QString(filePath));
     }
 
-    emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
+    emit updatedObject(obj_id_1, UPDATE_ALL);
     log("Load polygon 1!");
 }
 
@@ -220,9 +222,11 @@ void BooleanOpPlugin::loadPolygon2() {
     if (!parseFile(filePath.toStdString(), obj_2->collection())) {
         log("Fail to parse file: " + QString(filePath));
         return;
+    } else {
+        log("Success to parse file: " + QString(filePath));
     }
 
-    emit updatedObject(obj_id_2, UPDATE_GEOMETRY);
+    emit updatedObject(obj_id_2, UPDATE_ALL);
     log("Load polygon 2!");
 }
 
