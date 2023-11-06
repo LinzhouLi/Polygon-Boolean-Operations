@@ -7,6 +7,7 @@
 #include <OpenFlipper/BasePlugin/LoggingInterface.hh>
 #include <OpenFlipper/BasePlugin/LoadSaveInterface.hh>
 #include <ObjectTypes/PolyLine/PolyLine.hh>
+#include <ObjectTypes/PolyLineCollection/PolyLineCollection.hh>
 
 #include <QPushButton>
 #include <QLabel>
@@ -45,11 +46,10 @@ public:
 
 private:
     int obj_id_1, obj_id_2, result_obj_id;
-    std::vector<int> poly_seg_1, poly_seg_2;
 
     void clearSourceObjects();
     void clearResultObject();
-    bool parseFile(const std::string &filePath, PolyLine* polygon, std::vector<int> &poly_seg);
+    bool parseFile(const std::string &filePath, PolyLineCollection* polygons);
 
 private slots:
     // BaseInterface

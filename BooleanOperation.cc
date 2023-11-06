@@ -264,49 +264,52 @@ void ensure_counter_clockwise_polygon(PolyLine* polygon) {
 }
 
 
-void get_polygon_segments(PolyLine* polygon, std::vector<int> &poly_seg, std::vector<Segment> &segs, bool reverse) {
-    std::vector<PolyLine::Point>& vertices = polygon->points();
-    size_t n_vertices = polygon->n_vertices();
+void get_polygon_segments(PolyLineCollection* polygon, std::vector<Segment> &segs, bool reverse) {
+    size_t n_polygons = polygon->n_polylines();
 
-    for (size_t i = 0; i < n_vertices - 1; i++) {
-        if (i == poly_seg[0]) {
-            poly_seg.erase(poly_seg.begin());
-            continue;
-        }
-        if (reverse) {
-            Segment seg{vertices[i], vertices[i + 1]};
-            segs.push_back(seg);
-        } else {
-            Segment seg{vertices[i + 1], vertices[i]};
-            segs.push_back(seg);
+    for (size_t i = 0; i < n_polygons; i++) {
+        PolyLine* poly = polygon->polyline(i);
+        std::vector<PolyLine::Point>& vertices = poly->points();
+        size_t n_vertices = poly->n_vertices();
+
+        for (size_t j = 0; j < n_vertices - 1; j++) {
+            if (reverse) {
+                Segment seg{vertices[j], vertices[j + 1]};
+                segs.push_back(seg);
+            } else {
+                Segment seg{vertices[j + 1], vertices[j]};
+                segs.push_back(seg);
+            }
         }
     }
     return;
 }
 
 
-bool connect_segment_set(std::vector<Segment> &segs, PolyLine* polygon) {
+bool connect_segment_set(std::vector<Segment> &segs, PolyLineCollection* polygon) {
     if (segs.size() == 0) { return true; }
-    PolyLine::Point first_point = segs[0][0];
-    PolyLine::Point last_point = segs[0][1];
-    polygon->add_point(first_point);
-    segs.erase(segs.begin());
+
+    int poly_id;
+    PolyLine* poly;
+    PolyLine::Point first_point, last_point;
 
     int max_iter = 1000, iter = 0;
     while(segs.size() > 0) {
-        if (points_are_equal(first_point, last_point)) { // emmit a closed sub polygon
-            polygon->add_point(first_point);
+        if (iter == 0 || points_are_equal(first_point, last_point)) { // emmit a closed sub polygon
+            poly_id = polygon->new_poly_line();
+            poly = polygon->polyline(poly_id);
             first_point = segs[0][0];
             last_point = segs[0][1];
-            polygon->add_point(first_point);
+            poly->add_point(first_point);
+            poly->add_point(last_point);
             segs.erase(segs.begin());
         }
-        polygon->add_point(last_point);
 
         bool found = false;
         for(size_t i = 0; i < segs.size(); i++) {
             if (points_are_equal(segs[i][0], last_point)) { // find next segment
                 last_point = segs[i][1];
+                poly->add_point(last_point);
                 segs.erase(segs.begin() + i);
                 found = true;
                 break;
@@ -316,18 +319,18 @@ bool connect_segment_set(std::vector<Segment> &segs, PolyLine* polygon) {
         if (iter > max_iter) { return false; } // iteration too much
         if (!found) { return false; } // can not find next segment
     }
-    polygon->add_point(first_point);
+    poly->add_point(first_point);
     return true;
 }
 
 
-bool polygon_intersection(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result) {
+bool polygon_intersection(PolyLineCollection* polygon1, PolyLineCollection* polygon2, PolyLineCollection* result) {
     // ensure_counter_clockwise_polygon(polygon1);
     // ensure_counter_clockwise_polygon(polygon2);
 
     std::vector<Segment> seg1s, seg2s;
-    get_polygon_segments(polygon1, poly_seg_1, seg1s);
-    get_polygon_segments(polygon2, poly_seg_2, seg2s);
+    get_polygon_segments(polygon1, seg1s);
+    get_polygon_segments(polygon2, seg2s);
 
     std::vector<Segment> seg1clips, seg2clips;
     interclip_segment(seg1s, seg2s, seg1clips);
@@ -359,13 +362,13 @@ bool polygon_intersection(PolyLine* polygon1, PolyLine* polygon2, std::vector<in
 }
 
 
-bool polygon_union(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result) {
+bool polygon_union(PolyLineCollection* polygon1, PolyLineCollection* polygon2, PolyLineCollection* result) {
     // ensure_counter_clockwise_polygon(polygon1);
     // ensure_counter_clockwise_polygon(polygon2);
 
     std::vector<Segment> seg1s, seg2s;
-    get_polygon_segments(polygon1, poly_seg_1, seg1s);
-    get_polygon_segments(polygon2, poly_seg_2, seg2s);
+    get_polygon_segments(polygon1, seg1s);
+    get_polygon_segments(polygon2, seg2s);
 
     std::vector<Segment> seg1clips, seg2clips;
     interclip_segment(seg1s, seg2s, seg1clips);
@@ -397,13 +400,13 @@ bool polygon_union(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &pol
 }
 
 
-bool polygon_difference(PolyLine* polygon1, PolyLine* polygon2, std::vector<int> &poly_seg_1, std::vector<int> &poly_seg_2, PolyLine* result) {
+bool polygon_difference(PolyLineCollection* polygon1, PolyLineCollection* polygon2, PolyLineCollection* result) {
     // ensure_counter_clockwise_polygon(polygon1);
     // ensure_clockwise_polygon(polygon2);
 
     std::vector<Segment> seg1s, seg2s;
-    get_polygon_segments(polygon1, poly_seg_1, seg1s);
-    get_polygon_segments(polygon2, poly_seg_2, seg2s, true); // clockwise
+    get_polygon_segments(polygon1, seg1s);
+    get_polygon_segments(polygon2, seg2s, true); // clockwise
 
     std::vector<Segment> seg1clips, seg2clips;
     interclip_segment(seg1s, seg2s, seg1clips);

@@ -42,14 +42,12 @@ void BooleanOpPlugin::initializePlugin() {
 void BooleanOpPlugin::pluginsInitialized() {
     // Variable which will store the id of the newly created object.
     obj_id_1 = -1, obj_id_2 = -1, result_obj_id = -1;
-    poly_seg_1.clear();
-    poly_seg_2.clear();
-    PolyLineObject* obj_1(0), *obj_2(0), *result_obj(0);
+    PolyLineCollectionObject* obj_1(0), *obj_2(0), *result_obj(0);
 
     // Emit the signal, that we want to create a new object of the specified type plane
-    emit addEmptyObject( DATA_POLY_LINE, obj_id_1 );
-    emit addEmptyObject( DATA_POLY_LINE, obj_id_2 );
-    emit addEmptyObject( DATA_POLY_LINE, result_obj_id );
+    emit addEmptyObject( DATA_POLY_LINE_COLLECTION, obj_id_1 );
+    emit addEmptyObject( DATA_POLY_LINE_COLLECTION, obj_id_2 );
+    emit addEmptyObject( DATA_POLY_LINE_COLLECTION, result_obj_id );
 
     // Get the newly created object
     PluginFunctions::getObject(obj_id_1, obj_1);
@@ -68,13 +66,11 @@ void BooleanOpPlugin::pluginsInitialized() {
 
 
 void BooleanOpPlugin::clearSourceObjects() {
-    PolyLineObject* obj_1(0), *obj_2(0);
+    PolyLineCollectionObject* obj_1(0), *obj_2(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
     PluginFunctions::getObject(obj_id_2, obj_2);
-    obj_1->line()->clear();
-    obj_2->line()->clear();
-    poly_seg_1.clear();
-    poly_seg_2.clear();
+    obj_1->collection()->clear();
+    obj_2->collection()->clear();
     emit updatedObject(obj_id_1, UPDATE_GEOMETRY);
     emit updatedObject(obj_id_2, UPDATE_GEOMETRY);
     log("Clear source objects.");
@@ -82,9 +78,9 @@ void BooleanOpPlugin::clearSourceObjects() {
 
 
 void BooleanOpPlugin::clearResultObject() {
-    PolyLineObject* result_obj(0);
+    PolyLineCollectionObject* result_obj(0);
     PluginFunctions::getObject(result_obj_id, result_obj);
-    result_obj->line()->clear();
+    result_obj->collection()->clear();
     emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
     log("Clear result object.");
 }
@@ -92,21 +88,17 @@ void BooleanOpPlugin::clearResultObject() {
 
 void BooleanOpPlugin::calcIntersection() {
     log("Calculate intersection...");
-    PolyLineObject* obj_1(0), *obj_2(0), *result_obj(0);
+    PolyLineCollectionObject* obj_1(0), *obj_2(0), *result_obj(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
     PluginFunctions::getObject(obj_id_2, obj_2);
     PluginFunctions::getObject(result_obj_id, result_obj);
 
-    if (obj_1->line()->n_vertices() < 3 || obj_1->line()->n_vertices() < 3) {
-        log("Invalid source objects!");
-        return;
-    }
-    if (result_obj->line()->n_vertices() > 0) {
+    if (result_obj->collection()->n_polylines() > 0) {
         log("Result object is not empty!");
         return;
     }
 
-    if ( BoolOp::polygon_intersection(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
+    if ( BoolOp::polygon_intersection(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate intersection!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -118,21 +110,17 @@ void BooleanOpPlugin::calcIntersection() {
 
 void BooleanOpPlugin::calcUnion() {
     log("Calculate union...");
-    PolyLineObject* obj_1(0), *obj_2(0), *result_obj(0);
+    PolyLineCollectionObject* obj_1(0), *obj_2(0), *result_obj(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
     PluginFunctions::getObject(obj_id_2, obj_2);
     PluginFunctions::getObject(result_obj_id, result_obj);
 
-    if (obj_1->line()->n_vertices() < 3 || obj_1->line()->n_vertices() < 3) {
-        log("Invalid source objects!");
-        return;
-    }
-    if (result_obj->line()->n_vertices() > 0) {
+    if (result_obj->collection()->n_polylines() > 0) {
         log("Result object is not empty!");
         return;
     }
 
-    if ( BoolOp::polygon_union(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
+    if ( BoolOp::polygon_union(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate union!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -144,21 +132,17 @@ void BooleanOpPlugin::calcUnion() {
 
 void BooleanOpPlugin::calcDifference() {
     log("Calculate difference...");
-    PolyLineObject* obj_1(0), *obj_2(0), *result_obj(0);
+    PolyLineCollectionObject* obj_1(0), *obj_2(0), *result_obj(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
     PluginFunctions::getObject(obj_id_2, obj_2);
     PluginFunctions::getObject(result_obj_id, result_obj);
 
-    if (obj_1->line()->n_vertices() < 3 || obj_1->line()->n_vertices() < 3) {
-        log("Invalid source objects!");
-        return;
-    }
-    if (result_obj->line()->n_vertices() > 0) {
+    if (result_obj->collection()->n_polylines() > 0) {
         log("Result object is not empty!");
         return;
     }
 
-    if ( BoolOp::polygon_difference(obj_1->line(), obj_2->line(), poly_seg_1, poly_seg_2, result_obj->line()) ) {
+    if ( BoolOp::polygon_difference(obj_1->collection(), obj_2->collection(), result_obj->collection()) ) {
         log("Success to calculate difference!");
         emit updatedObject(result_obj_id, UPDATE_GEOMETRY);
         clearSourceObjects();
@@ -168,39 +152,37 @@ void BooleanOpPlugin::calcDifference() {
 }
 
 
-bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLine* polygon, std::vector<int> &poly_seg) {
+bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLineCollection* polygons) {
     using namespace std;
     auto f = fstream(filePath, ios::in);
     if (!f.is_open()) { return false; }
 
-    std::vector<PolyLine::Point> points;
+    PolyLine* polygon;
 
     std::string line, seg_sign("#loop");
     istringstream linestream;
-    getline(f, line); // get first '#loop'
     while (getline(f, line)) {
         if (line == seg_sign) {
+            int id = polygons->new_poly_line();
+            polygon = polygons->polyline(id);
             continue;
         }
         linestream = istringstream(line);
         double x, y;
         linestream >> x >> y;
         PolyLine::Point p(x, y, 0.0);
-        points.push_back(p);
+        polygon->add_point(p);
     }
     f.close();
 
-    poly_seg.push_back(points.size());
-
-    for (auto p : points) { polygon->add_point(p); }
     return true;
 }
 
 
 void BooleanOpPlugin::loadPolygon1() {
-    PolyLineObject* obj_1(0);
+    PolyLineCollectionObject* obj_1(0);
     PluginFunctions::getObject(obj_id_1, obj_1);
-    if (obj_1->line()->n_vertices() > 0) {
+    if (obj_1->collection()->n_polylines() > 0) {
         log("Object 1 is not empty");
         return;
     }
@@ -211,7 +193,7 @@ void BooleanOpPlugin::loadPolygon1() {
     );
 
     if (filePath.isEmpty() || filePath.isNull()) { return; }
-    if (!parseFile(filePath.toStdString(), obj_1->line(), poly_seg_1)) {
+    if (!parseFile(filePath.toStdString(), obj_1->collection())) {
         log("Fail to parse file: " + QString(filePath));
         return;
     }
@@ -222,9 +204,9 @@ void BooleanOpPlugin::loadPolygon1() {
 
 
 void BooleanOpPlugin::loadPolygon2() {
-    PolyLineObject* obj_2(0);
+    PolyLineCollectionObject* obj_2(0);
     PluginFunctions::getObject(obj_id_2, obj_2);
-    if (obj_2->line()->n_vertices() > 0) {
+    if (obj_2->collection()->n_polylines() > 0) {
         log("Object 2 is not empty");
         return;
     }
@@ -235,7 +217,7 @@ void BooleanOpPlugin::loadPolygon2() {
     );
     
     if (filePath.isEmpty() || filePath.isNull()) { return; }
-    if (!parseFile(filePath.toStdString(), obj_2->line(), poly_seg_2)) {
+    if (!parseFile(filePath.toStdString(), obj_2->collection())) {
         log("Fail to parse file: " + QString(filePath));
         return;
     }

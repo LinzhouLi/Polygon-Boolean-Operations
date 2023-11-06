@@ -1,2 +1,2 @@
 include (plugin)
-openflipper_plugin (TYPES POLYLINE)
+openflipper_plugin (TYPES POLYLINE POLYLINECOLLECTION)
