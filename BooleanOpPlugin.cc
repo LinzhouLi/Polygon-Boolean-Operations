@@ -161,6 +161,7 @@ bool BooleanOpPlugin::parseFile(const std::string &filePath, PolyLineCollection*
     std::string line, seg_sign("#loop");
     std::istringstream linestream;
     while (std::getline(f, line)) {
+        if (line == "") { continue; }
         if (line == seg_sign) {
             int id = polygons->new_poly_line();
             polygon = polygons->polyline(id);
